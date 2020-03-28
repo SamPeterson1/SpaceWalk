@@ -1,0 +1,24 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel testing
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+struct Triangle {
+    float3 vertexA;
+    float3 vertexB;
+    float3 vertexC;
+};
+
+RWStructuredBuffer<float> densities;
+AppendStructuredBuffer<Triangle> triangles;
+
+[numthreads(8, 8, 8)]
+void testing(uint3 id : SV_DispatchThreadID)
+{
+    Triangle tri;
+    tri.vertexA = id;
+    tri.vertexB = id;
+    tri.vertexC = id;
+    triangles.Append(tri);    
+}

@@ -1,0 +1,256 @@
+﻿// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSMain
+#include "/Includes/Noise.compute"
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+
+struct BiomePoint {
+    int biome;
+    float roughness;
+    float amplitude;
+    float persistence;
+    float baseRoughness;
+    float numLayers;
+    float minRadius;
+    float3 center;
+    float3 pos;
+};
+
+struct DensityPoint {
+    float density;
+    float3 color;
+};
+
+RWStructuredBuffer<BiomePoint> biomes;
+RWStructuredBuffer<DensityPoint> densities;
+float LOD;
+float xOff;
+float yOff;
+float zOff;
+float3 noiseOff;
+float roughness;
+float persistence;
+float baseRoughness;
+float amplitude;
+float numLayers;
+float minRadius;
+
+float getBiomeDist(float3 closestBiome, float3 pos, float diff, int biome) {
+    float minDist = -1;
+    float3 closestPoint = float3(0, 0, 0);
+    uint size = 0;
+    uint iDontCare = 0;
+    biomes.GetDimensions(size, iDontCare);
+    for (int i = 0; i < (int)size; i++) {
+        if (biome == biomes[i].biome) {
+            float dist = length(pos - biomes[i].pos);
+            if (dist < minDist || minDist == -1) {
+                minDist = dist;
+                closestPoint = biomes[i].pos;
+            }
+        }
+    }
+
+    float toNearestBiomeA = length(pos - closestPoint);
+    float toNearestBiomeB = length(pos - closestBiome);
+
+    float dist = toNearestBiomeA - toNearestBiomeB;
+    float rate = min(70, diff * 7.0f);
+
+    return 1 - min(1, max(0, dist / rate));
+}
+
+float getBiomeADist(float3 pos, float diff) {
+    float toA = length(pos - float3(30, 1000, 0));
+    float toB = length(pos - float3(-30, 1000, 0));
+    float rate = min(70, diff * 7.0f);
+    return 1 - min(1, max(0, ((toB - toA)) / rate));
+}
+
+float getBiomeBDist(float3 pos, float diff) {
+    float toA = length(pos - float3(30, 1000, 0));
+    float toB = length(pos - float3(-30, 1000, 0));
+    float rate = min(70, diff * 7.0f);
+    return 1 - min(1, max(0, ((toA - toB)) / rate));
+}
+
+int toIndex(int3 coord) {
+    return coord.x * 40 * 40 + coord.y * 40 + coord.z;
+}
+
+float3 closestPoint(float3 pos) {
+    float minDist = -1.0f;
+    float3 closest = float3(0, 0, 0);
+    uint size = 0;
+    uint iDontCare = 0;
+    biomes.GetDimensions(size, iDontCare);
+    for (int i = 0; i < (int)size; i++) {
+        float dist = length(biomes[i].pos - pos);
+        if (dist < minDist || minDist == -1.0f) {
+            minDist = dist;
+            closest = biomes[i].pos;
+        }
+    }
+
+    return closest;
+}
+
+float GetNoise(BiomePoint biomePoint, float3 toCenter) {
+    
+    float totalAmplitude = biomePoint.amplitude;
+    float totalRoughness = biomePoint.baseRoughness;
+    float totalNoise = 1000.0f;
+    float3 pointOnUnitSphere = normalize(toCenter);
+
+    for (int i = 0; i < numLayers; i++) {
+
+        totalNoise += (snoise(pointOnUnitSphere * totalRoughness) + 0.5f) / 2.0f * totalAmplitude;
+        totalAmplitude *= biomePoint.persistence;
+        totalRoughness *= biomePoint.roughness;
+    }
+
+    return length(toCenter) - totalNoise;
+}
+
+int closestBiome(float3 pos) {
+    float minDist = -1.0f;
+    int closestBiome = 0;
+    uint size = 0;
+    uint iDontCare = 0;
+    biomes.GetDimensions(size, iDontCare);
+    for (int i = 0; i < (int)size; i++) {
+        float dist = length(biomes[i].pos - pos);
+        if (dist < minDist || minDist == -1.0f) {
+            minDist = dist;
+            closestBiome = biomes[i].biome;
+        }
+    }
+
+    return closestBiome;
+}
+/*
+| 0
+| 0
+maxMaxVal 0
+| 0.33
+| 0.66
+maxMinVal 1
+| 1
+| 1
+| 1
+| 1
+minMaxVal 1
+| 0.66
+| 0.33
+minMinVal 0 
+| 0
+| 0
+*/
+/*
+float smoothRange(float a, float minminVal, float minMaxVal, float maxMinVal, float maxMaxVal) {
+    if (a > maxMinVal && a < minMaxVal) return 1;
+    if (a < minMinVal || a > maxMaxVal) return 0;
+    if (a > maxMinVal) {
+        float progress = a - maxMaxVal;
+        float range = maxMinVal - maxMaxVal;
+        return progress / range;
+    }
+    else if (a < minMaxVal) {
+        float progress = a - minMinVal;
+        float range = minMaxVal - minMinVal;
+        return progress / range;
+    }
+}
+*/
+
+float smoothDist(float a, float minVal, float maxVal) {
+    float progress = a - minVal;
+    float range = maxVal - minVal;
+    return min(1, max(0, progress / range));
+}
+
+float lerp(float2 v1, float2 v2) {
+    float t = (0 - v1.y) / (v2.y - v1.y);
+    return v1.x + t * (v2.x - v1.x);
+}
+
+[numthreads(8,8,8)]
+void CSMain (uint3 id : SV_DispatchThreadID)
+{
+    float3 toCenter = id + float3(xOff, yOff, zOff) - float3(20, 20, 20);
+
+    float dist = sqrt(toCenter.x * toCenter.x + toCenter.y * toCenter.y + toCenter.z * toCenter.z);
+
+    float3 closestBiomePoint = closestPoint(toCenter);
+
+    float biomeADist = getBiomeDist(closestBiomePoint, toCenter, 30.0f, 0);
+    float biomeBDist = getBiomeDist(closestBiomePoint, toCenter, 30.0f, 1);
+    float biomeCDist = getBiomeDist(closestBiomePoint, toCenter, 30.0f, 2);
+
+    float biomeAVal = 0;
+    float biomeBVal = 0;
+    float biomeCVal = 0;
+
+    if (biomeADist != 0) {
+        biomeAVal = GetNoise(biomes[0], toCenter);
+    }
+    if (biomeBDist != 0) {
+        biomeBVal = GetNoise(biomes[1], toCenter);
+    }
+    if (biomeCDist != 0) {
+        biomeCVal = GetNoise(biomes[2], toCenter);
+    }
+    float diff = 30.0f;
+
+    float biomeAFactor = biomeADist;
+    biomeAFactor *= biomeAFactor * biomeAFactor;
+    float biomeBFactor = biomeBDist;
+    biomeBFactor *= biomeBFactor * biomeBFactor;
+    float biomeCFactor = biomeCDist;
+    biomeCFactor *= biomeCFactor * biomeCFactor;
+
+    float caveFactor = min(1, max(0, (970.0f - length(toCenter)) / 50.0f));
+
+    DensityPoint density;
+    float biomeDensity = min(5, max(-5, biomeAVal * biomeAFactor + biomeBVal * biomeBFactor + biomeCVal * biomeCFactor))/5.0f;
+
+    float caveStructureVal = snoise(normalize(toCenter - snoise(toCenter / 40.0f)) * 5.0f);
+    float distFromCenter = length(toCenter) - 900.0f;
+    float closeFactor = 50.0f;
+    if (distFromCenter < 0) {
+        closeFactor = 20.0f;
+    }
+    float caveCloseSpeed = (closeFactor + 2 * snoise(normalize(toCenter) * 100.0f) + 1);
+    float caveCloseOff = abs(length(toCenter) - 900.0f) / caveCloseSpeed;
+    float caveVal = caveStructureVal - caveCloseOff * caveCloseOff;
+    density.density = caveVal * caveFactor + biomeDensity * (1 - caveFactor);
+    density.color = float3(1, 0, 0);
+    densities[toIndex(id)] = density;
+    /*
+    DensityPoint density;
+    density.color = float3(1, 0, 0);
+    */
+    /*
+    float distToFloor =  length(toCenter) - 940;
+    float factor = min(1, max(0, distToFloor / 5.0f));
+    float distToCeiling = length(toCenter) - 980;
+    float factor2 = min(1, max(0, distToCeiling / 5.0f));
+    float2 caveVal;
+    float2 floorVal;
+    if (factor2 > 0) {
+        caveVal = float2(snoise(toCenter / 80.0f), 1 - factor2);
+        floorVal = float2(-1, factor2);
+    }
+    else {
+        caveVal = float2(snoise(toCenter / 80.0f), 1 - factor);
+        floorVal = float2(-1, factor);
+    }
+    
+    
+    float caveVal = ;
+
+    density.density = caveVal;
+    densities[toIndex(id)] = density;
+    */
+}

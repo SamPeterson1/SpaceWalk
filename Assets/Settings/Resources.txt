@@ -1,0 +1,27 @@
+RESOURCE
+{
+	"radius":10.0,
+	"count":50,
+	"resourcePrefab":"Compound",
+	"type":1,
+	"maxScale": 2.5,
+	"minScale": 0.5
+}	
+RESOURCE
+{
+	"radius":10.0,
+	"count":50,
+	"resourcePrefab":"Sphere",
+	"type":2,
+	"maxScale": 1.5,
+	"minScale": 0.5
+}
+RESOURCE
+{
+	"radius":20.0,
+	"count":25,
+	"resourcePrefab":"Purple",
+	"type":3,
+	"maxScale": 2.0,
+	"minScale": 0.5
+}

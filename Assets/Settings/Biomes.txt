@@ -1,0 +1,48 @@
+BIOME
+{
+	"type":0,
+	"settings": {
+		"roughness":1.690000057220459,
+		"amplitude":15.65999984741211,
+		"persistence":0.5,
+		"baseRoughness":27.440000534057618,
+		"numLayers":5.0,
+		"minRadius":6.300000190734863,
+		"center":{"x":0.0,"y":0.0,"z":0.0}
+	},
+	"resources":[2],
+	"individualSpawnRates":[1],
+	"resourceSpawnRate":0.1
+}
+BIOME
+{
+	"type":1,
+	"settings": {
+		"roughness":1.7400000095367432,
+		"amplitude":3.180000066757202,
+		"persistence":0.41999998688697817,
+		"baseRoughness":18.399999618530275,
+		"numLayers":5.0,
+		"minRadius":3.0,
+		"center":{"x":0.0,"y":0.0,"z":0.0}
+	},
+	"resources":[3],
+	"individualSpawnRates":[1],
+	"resourceSpawnRate":0.5
+}
+BIOME
+{
+	"type":2,
+	"settings": {
+		"roughness":1.7000000476837159,
+		"amplitude":7.090000152587891,
+		"persistence":0.5199999809265137,
+		"baseRoughness":31.780000686645509,
+		"numLayers":5.0,
+		"minRadius":4.199999809265137,
+		"center":{"x":0.0,"y":0.0,"z":0.0}
+	},
+	"resources":[1,2],
+	"individualSpawnRates":[0.2, 0.8],
+	"resourceSpawnRate":0.9
+}

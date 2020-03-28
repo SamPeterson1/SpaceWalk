@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 0843b4ce0d27c2248a37c7035e3d1c73
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - compute: {instanceID: 0}
+  - densities: {instanceID: 0}
+  - biomesJSON: {fileID: 4900000, guid: b41ed4416315b9c4fb493e0a25d8060e, type: 3}
+  - chunkPrefab: {instanceID: 0}
+  - network: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

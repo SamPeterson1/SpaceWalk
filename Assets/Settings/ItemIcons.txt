@@ -1,0 +1,18 @@
+ITEM
+{
+	"prefab":"CompoundIcon",
+	"type":1,
+	"maxStack": 20
+}
+ITEM
+{
+	"prefab":"FooIcon",
+	"type":2,
+	"maxStack": 10
+}
+ITEM
+{
+	"prefab":"PurpleIcon",
+	"type":3,
+	"maxStack": 5
+}
